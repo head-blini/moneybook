@@ -1,0 +1,5 @@
+# Copy this file to local.properties and set your local Android SDK path.
+# Use a publishable key (or legacy anon key), never a service_role key.
+sdk.dir=/path/to/Android/sdk
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key

@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
     <application android:name=".app.MoneyBookApplication" android:label="MoneyBook"
         android:icon="@drawable/ic_moneybook" android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false" android:allowBackup="false" android:supportsRtl="true" android:theme="@style/Theme.MoneyBook">
