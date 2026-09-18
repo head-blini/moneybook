@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:name=".app.MoneyBookApplication" android:label="MoneyBook"
+        android:icon="@drawable/ic_moneybook" android:dataExtractionRules="@xml/data_extraction_rules"
+        android:allowBackup="false" android:supportsRtl="true" android:theme="@style/Theme.MoneyBook">
+        <activity android:name=".app.MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
