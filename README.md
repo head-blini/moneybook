@@ -1,8 +1,10 @@
 # MoneyBook Android
 
-Phase 2 connects the Compose app to Supabase email/password authentication and a
-two-person household. Home transaction figures remain static examples; transaction
-persistence and notification import are later phases.
+Phase 2A connects the Compose app to Supabase email/password authentication and a
+two-person household. Phase 2B-1 adds the database foundation for categories,
+cards, shared/private transactions, partial refunds, aggregate card performance,
+transaction soft deletion, and automatic household default categories. Android
+transaction screens and notification import remain later work.
 
 ## Build and run
 
@@ -20,8 +22,7 @@ If multiple devices are connected, set `ANDROID_SERIAL` to the desired emulator.
 Open the project in Android Studio and run `app`, or install
 `app/build/outputs/apk/debug/app-debug.apk` with ADB.
 
-Database changes live in
-`supabase/migrations/20260918000000_phase_2_database_foundation.sql`. Test locally:
+Database changes live in versioned files under `supabase/migrations/`. Test locally:
 
 ```sh
 supabase start
@@ -32,6 +33,13 @@ supabase test db --local
 
 Do not use `supabase db push` until the migration has been reviewed for the target
 project.
+
+The Phase 2B card performance RPC returns household-visible aggregates only. It does
+not expose a partner's personal transaction rows or separate personal spending total.
+Transactions are soft-deleted through RPCs, remain available for authorized restore,
+and retain their refund history and notification fingerprint. New households receive
+12 expense and 5 income categories atomically; the same defaults are backfilled into
+existing households without replacing or reactivating matching categories.
 
 ## Structure and dependencies
 
@@ -61,3 +69,7 @@ Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
 Manual device validation also covered email sign-up and sign-in, household creation,
 invitation and two-person joining, rejection of a third member, session and household
 restoration after app restart, and persistent sign-out after app restart.
+
+Phase 2B-1 database validation on 2026-09-21 passed 128/128 local pgTAP assertions
+(34 Phase 2A regression assertions and 94 Phase 2B assertions). A full local database
+reset reapplied all migrations successfully, and database lint reported no schema errors.

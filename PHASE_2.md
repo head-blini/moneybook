@@ -344,6 +344,28 @@ Manual device validation:
 No remote migration push, database reset, or existing user/household deletion was
 performed as part of validation.
 
+Phase 2B is implemented in follow-up migrations. The Phase 2A out-of-scope list above
+describes the boundary of the completed authentication/household milestone and does
+not prohibit later versioned work from adding transaction tables without modifying the
+Phase 2A migration.
+
+The Phase 2B-1 follow-up database migration adds transaction soft-delete and restore
+RPCs. Deleted transactions and their refunds remain stored but are excluded from normal
+reads, monthly summaries, and card performance. Deleted transactions cannot receive new
+refunds, while restoration reapplies the preserved confirmed-refund net amount.
+
+The same migration initializes 12 expense and 5 income categories for every Household.
+Existing Households are backfilled without replacing, renaming, or reactivating matching
+categories. `create_household()` initializes the OWNER membership before the categories,
+so Household creation and default initialization remain atomic.
+
+Local validation passed 128/128 pgTAP assertions: the unchanged 34 Phase 2A security
+assertions and 94 Phase 2B transaction, refund, card-performance, soft-delete, and default-
+category assertions. A local database reset reapplied all migrations in order, and DB lint
+reported no schema errors. After review and a two-migration dry run, both Phase 2B-1
+migrations were applied to the linked remote Supabase project on 2026-09-21 without
+resetting the remote database or changing existing user and Household row counts.
+
 ---
 
 ## 12. Completion Report

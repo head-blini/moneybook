@@ -191,7 +191,7 @@ scope
 amount
 
 categoryId
-paymentMethodId
+cardId
 
 merchant
 memo
@@ -203,6 +203,7 @@ status
 
 createdAt
 updatedAt
+deletedAt
 ```
 
 TransactionType:
@@ -235,6 +236,26 @@ CONFIRMED
 CANCELED
 ```
 
+Phase 2B에서는 범용 결제수단 계층을 미리 만들지 않고, 확정된 카드 실적 요구사항에
+맞춰 `paymentMethodId`를 nullable `cardId`로 구체화한다. 카드가 아닌 거래는
+`cardId = null`이다. 카드 외 결제수단을 별도 관리해야 하는 요구가 생기기 전까지
+`payment_methods` 테이블은 추가하지 않는다.
+
+`createdBy`, `paidBy`, `householdId`, `scope`는 거래 소유권 필드다. 공동 거래를
+배우자가 수정하더라도 이 필드는 변경할 수 없다. 거래를 공동에서 개인으로 바꾸거나
+개인 거래를 공동으로 공개하는 작업도 일반 UPDATE로 허용하지 않는다.
+
+거래 삭제는 `deletedAt`을 기록하는 소프트 삭제로 처리한다. 일반 SELECT, UPDATE,
+월간 집계, 카드 사용금액 및 예상 인정 실적에서는 삭제된 거래를 제외한다. SHARED
+거래는 같은 Household의 두 사용자 모두 삭제 및 복구할 수 있고, PERSONAL 거래는
+`paidBy` 본인만 삭제 및 복구할 수 있다. `CANCELED`는 전액 환불 상태이며 삭제
+상태와는 별개다. 알림 중복 방지를 위해 삭제된 거래도 notification fingerprint의
+유일성을 계속 점유한다.
+
+Household에는 생성 시 기본 지출 카테고리 12개와 기본 수입 카테고리 5개를 만든다.
+기존 Household도 같은 목록으로 backfill하되 이름과 거래 유형이 같은 카테고리가
+이미 있으면 보존하고 새로 만들지 않는다. 비활성 카테고리를 강제로 활성화하지 않는다.
+
 금액은 floating point를 사용하지 않는다.
 
 KRW는 Long으로 저장한다.
@@ -247,6 +268,54 @@ KRW는 Long으로 저장한다.
 amount = 54900L
 ```
 
+## Transaction Refund
+
+부분 취소와 부분 환불을 지원하기 위해 원거래 금액은 변경하지 않는다.
+
+```text
+TransactionRefund
+
+id
+transactionId
+amount
+status
+source
+idempotencyKey
+refundedAt
+createdBy
+createdAt
+updatedAt
+```
+
+한 거래에는 여러 환불 이벤트가 연결될 수 있다. `PENDING`과 `CONFIRMED` 환불의
+합계는 원거래 금액을 초과할 수 없고, 가계부 및 카드 실적 집계에는 `CONFIRMED`
+환불만 반영한다. 확정 환불 합계가 원거래 금액과 같아지면 원거래 상태를
+`CANCELED`로 변경한다. 거래를 소프트 삭제해도 원거래와 환불 이벤트는 보존되며,
+일반 조회에서는 함께 숨긴다. 삭제된 거래에는 새 환불을 등록할 수 없다. 거래를
+복구하면 보존된 `CONFIRMED` 환불을 다시 반영한 순금액으로 집계한다.
+
+환불 등록은 서버 RPC에서 원거래를 잠근 뒤 수행한다. `idempotencyKey`는 동일한
+알림이나 네트워크 재시도로 환불이 중복 등록되는 것을 막는다.
+
+## Card Performance
+
+카드에는 실적 관리 여부와 알림 자동수집 여부를 별도 boolean 값으로 저장한다.
+실적 관리가 켜진 카드만 목표 금액과 월 실적을 조회한다.
+
+```text
+cardUsageAmount
+    = EXPENSE 원거래 금액 - CONFIRMED 환불
+
+expectedPerformanceAmount
+    = cardUsageAmount 중 실적 인정 거래 합계
+```
+
+기본적으로 카드별 제외 카테고리를 적용하되, 거래의 nullable 실적 override가
+있으면 개별 거래 설정이 우선한다. 공동 거래와 개인 거래를 모두 계산하지만 카드
+실적 RPC는 합계만 반환하며 거래 ID, 결제자, merchant, memo, category 같은 개인
+거래 상세 필드는 반환하지 않는다. 같은 Household 구성원은 카드 실적 합계를 함께
+조회할 수 있다.
+
 ---
 
 # 7. Privacy Model
@@ -256,11 +325,15 @@ MoneyBook의 핵심 보안 요구사항이다.
 SHARED 거래:
 
 * 같은 Household의 두 사용자 모두 상세 조회 가능
+* 같은 Household의 두 사용자 모두 수정, 소프트 삭제 및 복구 가능
+* 수정 시 거래 소유권 필드는 변경 불가
 
 PERSONAL 거래:
 
 * 거래 소유자만 상세 조회 가능
+* `paidBy` 본인만 수정, 소프트 삭제 및 복구 가능
 * 상대방은 개별 거래 정보를 조회할 수 없음
+* 상대방은 개인 거래 합계도 조회할 수 없음
 
 다른 Household:
 
@@ -602,4 +675,3 @@ v0.1에서는 구현하지 않는다.
 * 외화 회계
 
 기능 추가는 명시적인 요구사항 변경 없이 진행하지 않는다.
-
