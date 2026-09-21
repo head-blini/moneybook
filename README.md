@@ -1,12 +1,14 @@
 # MoneyBook Android
 
-Phase 1 navigation foundation. All displayed financial figures are static examples.
-No authentication, backend, permissions, notification collection, or persistence is implemented.
+Phase 2 connects the Compose app to Supabase email/password authentication and a
+two-person household. Home transaction figures remain static examples; transaction
+persistence and notification import are later phases.
 
 ## Build and run
 
-Use JDK 17 or 21, Android SDK Platform 36 and Build Tools 35.0.0.
-Set `sdk.dir` in your untracked `local.properties`, or set `ANDROID_HOME`.
+Use JDK 17 or 21, Android SDK Platform 36 and Build Tools 35.0.0. Copy the values
+from `local.properties.example` into untracked `local.properties`. Use a Supabase
+publishable key or legacy anon key, never service_role.
 
 ```sh
 ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
@@ -18,31 +20,44 @@ If multiple devices are connected, set `ANDROID_SERIAL` to the desired emulator.
 Open the project in Android Studio and run `app`, or install
 `app/build/outputs/apk/debug/app-debug.apk` with ADB.
 
+Database changes live in
+`supabase/migrations/20260918000000_phase_2_database_foundation.sql`. Test locally:
+
+```sh
+supabase start
+supabase db reset --local --no-seed
+supabase db lint --local --schema public,moneybook_private --level warning --fail-on warning
+supabase test db --local
+```
+
+Do not use `supabase db push` until the migration has been reviewed for the target
+project.
+
 ## Structure and dependencies
 
-The single app module uses `com.moneybook` with app/navigation, core/ui, and feature
-packages. Empty core/common, core/model, data, domain, and notification directories
-are reserved locally; Git does not preserve empty directories. Add their first files
-when a later phase requires them. No speculative repository or use-case interfaces exist.
+The app follows UI → ViewModel → repository → Supabase. Auth and household
+repositories are the only Phase 2 data abstractions.
 
-Compose Material 3 renders screens; Navigation Compose owns navigation/back stacks.
-Hilt creates the application and Home ViewModel. Lifecycle Compose collects its
-read-only StateFlow. Coroutines supplies Flow; no background work is needed yet.
-JUnit and Compose UI testing cover state, navigation, recreation, and themes.
-Versions are pinned to a tested AGP 8.13 / Kotlin 2.2.10 / Gradle 8.13 toolchain.
-The Hilt setup follows https://developer.android.com/training/dependency-injection/hilt-android.
+Supabase Kotlin Auth restores its stored session. On launch the app resolves Login,
+Household Setup, or Home from the real session and membership query. Owners can
+create a 24-hour, single-use invitation in Settings. Both household members can see
+the household and its membership list.
 
-## Temporary behavior
-
-Search `PHASE_1_DEV` for replacement points. Cold launch starts at Login; local buttons
-advance through Household Setup and Notification Permission to Home. Entering Home
-clears onboarding from the back stack. The four bottom tabs restore navigation state;
-central Add opens a placeholder and closes/back-navigates to its caller. No data is saved.
-System light/dark mode and Android 12+ dynamic color are supported.
+The bottom navigation and static Home preview from Phase 1 remain intact. Notification
+permission onboarding has been removed because it belongs to a later phase.
 
 ## Validation
 
-Validated on an API 34 ARM64 emulator: 2 JVM tests and 6 instrumentation tests.
-Instrumentation covers all destinations, onboarding, tab selection, Add close/back,
-return to Home, activity recreation, and static/dynamic light/dark Home rendering.
-Reports are generated under `app/build/reports/`.
+Android and database validation reports are generated under `app/build/reports/`
+and by the Supabase CLI respectively.
+
+Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
+
+* `./gradlew assembleDebug` — passed
+* `./gradlew testDebugUnitTest` — 11/11 passed
+* `./gradlew connectedDebugAndroidTest` — 7/7 passed
+* `supabase test db --local` — 34/34 pgTAP assertions passed
+
+Manual device validation also covered email sign-up and sign-in, household creation,
+invitation and two-person joining, rejection of a third member, session and household
+restoration after app restart, and persistent sign-out after app restart.

@@ -6,3 +6,9 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Local credentials and signing material
+.env
+.env.*
+signing_keys.json
+*.pem

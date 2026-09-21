@@ -10,18 +10,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.moneybook.core.ui.MoneyBookTheme
+import com.moneybook.domain.model.Household
 import java.text.NumberFormat
 import java.util.Locale
 
 internal fun formatKrw(amount: Long): String = "₩" + NumberFormat.getIntegerInstance(Locale.KOREA).format(amount)
 
 @Composable
-fun HomeScreen(state: HomeUiState) {
+fun HomeScreen(state: HomeUiState, household: Household? = null) {
     LazyColumn(Modifier.fillMaxSize().testTag("screen_Home"),
         contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
             Text("MoneyBook · ${state.month}", style = MaterialTheme.typography.headlineMedium)
-            Text("개발용 예시 데이터", style = MaterialTheme.typography.labelLarge)
+            household?.let { Text("${it.name} · 구성원 ${it.members.size}/2", style = MaterialTheme.typography.labelLarge) }
+            Text("예시 지출 데이터", style = MaterialTheme.typography.labelLarge)
         }
         item {
             Card(Modifier.fillMaxWidth()) {
