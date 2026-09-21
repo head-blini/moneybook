@@ -4,7 +4,8 @@ Phase 2A connects the Compose app to Supabase email/password authentication and 
 two-person household. Phase 2B-1 adds the database foundation for categories,
 cards, shared/private transactions, partial refunds, aggregate card performance,
 transaction soft deletion, and automatic household default categories. Android
-transaction screens and notification import remain later work.
+transaction entry, monthly history, editing, refund, and soft-delete restore are
+implemented in Phase 2B-2. Notification import remains later work.
 
 ## Build and run
 
@@ -73,3 +74,12 @@ restoration after app restart, and persistent sign-out after app restart.
 Phase 2B-1 database validation on 2026-09-21 passed 128/128 local pgTAP assertions
 (34 Phase 2A regression assertions and 94 Phase 2B assertions). A full local database
 reset reapplied all migrations successfully, and database lint reported no schema errors.
+
+Phase 2B-2 adds the Android transaction domain/data layer and Compose transaction
+entry/history flows. Automated tests cover form validation, income without a card,
+duplicate-save protection, shared/personal filtering, editing, soft-delete/restore,
+partial refunds, full-refund status, empty state, and repository errors. Validation
+passed 29/29 unit tests and 9/9 instrumented tests. Manual acceptance testing on a
+Samsung SM-G986N running Android 13 verified the actual Supabase flow for shared and
+personal income/expenses, partner visibility, creation, editing, partial/full refunds,
+delete/Undo, restart persistence, and the absence of payer-selection UI.

@@ -23,12 +23,16 @@ import com.moneybook.feature.settings.HouseholdSettingsViewModel
 import com.moneybook.feature.settings.SettingsScreen
 import com.moneybook.feature.statistics.StatisticsScreen
 import com.moneybook.feature.transaction.AddTransactionScreen
+import com.moneybook.feature.transaction.AddTransactionViewModel
 import com.moneybook.feature.transaction.TransactionsScreen
+import com.moneybook.feature.transaction.TransactionsViewModel
 
 private enum class Destination(val label: String, val symbol: String) {
     Home("홈", "⌂"), Transactions("거래", "≡"), Add("추가", "+"),
     Statistics("통계", "▥"), Settings("설정", "⚙"),
 }
+
+private const val TRANSACTIONS_REFRESH_KEY = "transactions_refresh"
 
 @Composable
 fun MoneyBookNavHost(appViewModel: AppViewModel = hiltViewModel()) {
@@ -114,8 +118,47 @@ internal fun MoneyBookMainNavigation(
                 val homeState by viewModel.uiState.collectAsStateWithLifecycle()
                 HomeScreen(homeState, household)
             }
-            composable(Destination.Transactions.name) { TransactionsScreen() }
-            composable(Destination.Add.name) { AddTransactionScreen(navController::popBackStack) }
+            composable(Destination.Transactions.name) { backStackEntry ->
+                val viewModel: TransactionsViewModel = hiltViewModel()
+                val transactionState by viewModel.state.collectAsStateWithLifecycle()
+                val shouldRefresh by backStackEntry.savedStateHandle
+                    .getStateFlow(TRANSACTIONS_REFRESH_KEY, false)
+                    .collectAsStateWithLifecycle()
+                LaunchedEffect(shouldRefresh) {
+                    if (shouldRefresh) {
+                        backStackEntry.savedStateHandle[TRANSACTIONS_REFRESH_KEY] = false
+                        viewModel.retry()
+                    }
+                }
+                TransactionsScreen(transactionState, viewModel)
+            }
+            composable(Destination.Add.name) {
+                val viewModel: AddTransactionViewModel = hiltViewModel()
+                val addState by viewModel.state.collectAsStateWithLifecycle()
+                AddTransactionScreen(
+                    state = addState,
+                    onClose = navController::popBackStack,
+                    onType = viewModel::setType,
+                    onScope = viewModel::setScope,
+                    onAmount = viewModel::setAmount,
+                    onDate = viewModel::setDate,
+                    onTime = viewModel::setTime,
+                    onCategory = viewModel::setCategory,
+                    onCard = viewModel::setCard,
+                    onMerchant = viewModel::setMerchant,
+                    onMemo = viewModel::setMemo,
+                    onSave = {
+                        viewModel.save {
+                            navController.previousBackStackEntry?.savedStateHandle
+                                ?.set(TRANSACTIONS_REFRESH_KEY, true)
+                            navController.navigate(Destination.Transactions.name) {
+                                popUpTo(Destination.Add.name) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                )
+            }
             composable(Destination.Statistics.name) { StatisticsScreen() }
             composable(Destination.Settings.name) {
                 val viewModel: HouseholdSettingsViewModel = hiltViewModel()

@@ -366,6 +366,14 @@ reported no schema errors. After review and a two-migration dry run, both Phase 
 migrations were applied to the linked remote Supabase project on 2026-09-21 without
 resetting the remote database or changing existing user and Household row counts.
 
+Phase 2B-2 adds Android transaction registration and monthly history. The app uses the
+existing RLS-backed tables and RPCs for income/expense, shared/personal visibility,
+editing, soft deletion with immediate Undo restore, and partial/full refunds. Cards are
+optional and only existing household cards are presented; no card-management or
+automatic-notification UI is included. Deleted transactions are not listed because the
+database intentionally hides them from normal SELECT, so restore is available from the
+post-delete Undo action rather than a separate trash screen.
+
 ---
 
 ## 12. Completion Report
