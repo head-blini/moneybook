@@ -2,7 +2,6 @@ package com.moneybook.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.moneybook.BuildConfig
 import com.moneybook.core.result.AppResult
 import com.moneybook.domain.model.Household
 import com.moneybook.domain.repository.AuthRepository
@@ -44,7 +43,7 @@ class AppViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             mutableState.value = AppUiState.Loading
-            if (BuildConfig.SUPABASE_URL.isBlank() || BuildConfig.SUPABASE_PUBLISHABLE_KEY.isBlank()) {
+            if (!authRepository.isConfigured) {
                 mutableState.value = AppUiState.ConfigurationRequired
                 return@launch
             }

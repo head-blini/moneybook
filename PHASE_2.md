@@ -321,6 +321,31 @@ Stop after the implementation and local verification so the changes can be revie
 
 ---
 
+## Phase 2A Completion Status
+
+Phase 2A implementation and validation were completed on 2026-09-21.
+
+Automated validation:
+
+* Android Debug build passed.
+* JVM unit tests passed: 11/11.
+* Android UI tests passed on a Samsung SM-G986N running Android 13: 7/7.
+* Local Supabase pgTAP database tests passed: 34/34.
+
+Manual device validation:
+
+* Email sign-up and email verification succeeded.
+* Sign-in reached Home through the real authentication flow.
+* Household creation, invitation creation, and a second user's join succeeded.
+* A third user was prevented from joining a full household.
+* Restarting the app restored the authenticated session and existing household.
+* Explicit sign-out remained signed out after restarting the app and showed Login.
+
+No remote migration push, database reset, or existing user/household deletion was
+performed as part of validation.
+
+---
+
 ## 12. Completion Report
 
 When finished, report:
@@ -335,4 +360,3 @@ When finished, report:
 * any manual setup still required
 
 Do not begin Phase 3.
-

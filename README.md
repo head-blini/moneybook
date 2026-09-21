@@ -50,3 +50,14 @@ permission onboarding has been removed because it belongs to a later phase.
 
 Android and database validation reports are generated under `app/build/reports/`
 and by the Supabase CLI respectively.
+
+Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
+
+* `./gradlew assembleDebug` — passed
+* `./gradlew testDebugUnitTest` — 11/11 passed
+* `./gradlew connectedDebugAndroidTest` — 7/7 passed
+* `supabase test db --local` — 34/34 pgTAP assertions passed
+
+Manual device validation also covered email sign-up and sign-in, household creation,
+invitation and two-person joining, rejection of a third member, session and household
+restoration after app restart, and persistent sign-out after app restart.

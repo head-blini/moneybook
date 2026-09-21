@@ -5,6 +5,7 @@ import com.moneybook.data.remote.supabase.SupabaseProvider
 import com.moneybook.domain.repository.AuthRepository
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.status.SessionStatus
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -13,8 +14,16 @@ import kotlinx.coroutines.CancellationException
 class SupabaseAuthRepository @Inject constructor(
     private val provider: SupabaseProvider,
 ) : AuthRepository {
-    override suspend fun hasSession(): Boolean =
-        provider.isConfigured && provider.client.auth.currentSessionOrNull() != null
+    override val isConfigured: Boolean
+        get() = provider.isConfigured
+
+    override suspend fun hasSession(): Boolean {
+        if (!provider.isConfigured) return false
+        return provider.client.auth.run {
+            awaitInitialization()
+            sessionStatus.value.hasUsableSession()
+        }
+    }
 
     override suspend fun signUp(email: String, password: String): AppResult<Unit> = runRequest {
         provider.client.auth.signUpWith(Email) {
@@ -46,3 +55,5 @@ class SupabaseAuthRepository @Inject constructor(
         }
     }
 }
+
+internal fun SessionStatus.hasUsableSession(): Boolean = this is SessionStatus.Authenticated
