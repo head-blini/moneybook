@@ -73,3 +73,11 @@ data class TransactionRefundDto(
     val status: String,
     @SerialName("refunded_at") val refundedAt: String,
 )
+
+@Serializable
+data class MonthlySummaryDto(
+    @SerialName("shared_income") val sharedIncome: Long,
+    @SerialName("shared_expense") val sharedExpense: Long,
+    @SerialName("personal_income") val personalIncome: Long,
+    @SerialName("personal_expense") val personalExpense: Long,
+)

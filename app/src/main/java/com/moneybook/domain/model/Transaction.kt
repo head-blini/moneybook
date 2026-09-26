@@ -46,6 +46,17 @@ data class TransactionRefund(
     val refundedAt: Instant,
 )
 
+data class MonthlySummary(
+    val sharedIncome: Long,
+    val sharedExpense: Long,
+    val personalIncome: Long,
+    val personalExpense: Long,
+) {
+    val income: Long get() = sharedIncome + personalIncome
+    val expense: Long get() = sharedExpense + personalExpense
+    val balance: Long get() = income - expense
+}
+
 data class TransactionDraft(
     val type: TransactionType,
     val scope: TransactionScope,

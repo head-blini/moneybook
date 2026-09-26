@@ -8,6 +8,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.compose.*
 import com.moneybook.app.AppUiState
 import com.moneybook.app.AppViewModel
@@ -48,9 +50,9 @@ fun MoneyBookNavHost(appViewModel: AppViewModel = hiltViewModel()) {
         )
         AppUiState.Unauthenticated -> AuthEntry(appViewModel::refresh)
         AppUiState.HouseholdRequired -> HouseholdEntry(appViewModel::refresh, appViewModel::signOut)
-        is AppUiState.Ready -> MoneyBookMainNavigation(
-            value.household, appViewModel::refresh, appViewModel::signOut,
-        )
+        is AppUiState.Ready -> key(value.household.id, appViewModel.currentUserId()) {
+            MoneyBookMainNavigation(value.household, appViewModel::refresh, appViewModel::signOut)
+        }
         is AppUiState.Error -> PlaceholderScreen(
             "불러오지 못했습니다", value.message, "screen_Error", "다시 시도", appViewModel::refresh,
         )
@@ -116,7 +118,9 @@ internal fun MoneyBookMainNavigation(
             composable(Destination.Home.name) {
                 val viewModel: HomeViewModel = hiltViewModel()
                 val homeState by viewModel.uiState.collectAsStateWithLifecycle()
-                HomeScreen(homeState, household)
+                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
+                LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.invalidate() }
+                HomeScreen(homeState, household, viewModel::refresh)
             }
             composable(Destination.Transactions.name) { backStackEntry ->
                 val viewModel: TransactionsViewModel = hiltViewModel()

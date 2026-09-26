@@ -81,6 +81,7 @@ class AddTransactionViewModelTest {
 }
 
 private class AddFakeCategoryRepository : CategoryRepository {
+    override suspend fun getCategories() = getActiveCategories()
     override suspend fun getActiveCategories() = AppResult.Success(
         listOf(
             Category("food", "식비", TransactionType.EXPENSE, true),
@@ -90,6 +91,8 @@ private class AddFakeCategoryRepository : CategoryRepository {
 }
 
 private class AddFakeTransactionRepository : TransactionRepository {
+    override suspend fun getMonthlySummary(month: YearMonth) = AppResult.Success(MonthlySummary(0, 0, 0, 0))
+    override suspend fun getRefundsForTransactions(ids: List<String>) = AppResult.Success(emptyList<TransactionRefund>())
     val created = mutableListOf<TransactionDraft>()
     override suspend fun getTransactions(month: YearMonth) = AppResult.Success(emptyList<Transaction>())
     override suspend fun getCards() = AppResult.Success(emptyList<Card>())

@@ -179,6 +179,7 @@ private class FakeCategoryRepository : CategoryRepository {
     override suspend fun getActiveCategories() = AppResult.Success(
         listOf(Category("food", "식비", TransactionType.EXPENSE, true)),
     )
+    override suspend fun getCategories() = getActiveCategories()
 }
 
 private class FakeTransactionRepository(
@@ -186,6 +187,8 @@ private class FakeTransactionRepository(
     private val failLoads: Boolean = false,
     private val failUpdates: Boolean = false,
 ) : TransactionRepository {
+    override suspend fun getMonthlySummary(month: YearMonth) = AppResult.Success(MonthlySummary(0, 0, 0, 0))
+    override suspend fun getRefundsForTransactions(ids: List<String>) = AppResult.Success(refunds.filter { it.transactionId in ids })
     val refunds = mutableListOf<TransactionRefund>()
     var updateCalls = 0
         private set

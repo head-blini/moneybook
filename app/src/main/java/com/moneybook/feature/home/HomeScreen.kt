@@ -7,9 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.moneybook.core.ui.MoneyBookTheme
 import com.moneybook.domain.model.Household
 import java.text.NumberFormat
 import java.util.Locale
@@ -17,44 +15,42 @@ import java.util.Locale
 internal fun formatKrw(amount: Long): String = "₩" + NumberFormat.getIntegerInstance(Locale.KOREA).format(amount)
 
 @Composable
-fun HomeScreen(state: HomeUiState, household: Household? = null) {
+fun HomeScreen(state: HomeUiState, household: Household? = null, onRetry: () -> Unit = {}) {
     LazyColumn(Modifier.fillMaxSize().testTag("screen_Home"),
         contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
-            Text("MoneyBook · ${state.month}", style = MaterialTheme.typography.headlineMedium)
+            Text("MoneyBook · ${state.month.year}년 ${state.month.monthValue}월", style = MaterialTheme.typography.headlineMedium)
             household?.let { Text("${it.name} · 구성원 ${it.members.size}/2", style = MaterialTheme.typography.labelLarge) }
-            Text("예시 지출 데이터", style = MaterialTheme.typography.labelLarge)
         }
-        item {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("총 지출", style = MaterialTheme.typography.titleMedium)
-                    Text(formatKrw(state.totalSpending), style = MaterialTheme.typography.headlineLarge)
+        when {
+            state.loading -> item { CircularProgressIndicator(Modifier.testTag("home_loading")) }
+            state.error != null -> item {
+                Column {
+                    Text(state.error, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onRetry) { Text("다시 시도") }
                 }
             }
-        }
-        item {
-            Text("공동 지출", style = MaterialTheme.typography.titleMedium)
-            Text("${formatKrw(state.sharedSpending)} / ${formatKrw(state.sharedBudget)}",
-                style = MaterialTheme.typography.titleLarge)
-        }
-        item { Text("최근 거래", style = MaterialTheme.typography.titleLarge) }
-        items(state.recentTransactions) { transaction ->
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(transaction.merchant, style = MaterialTheme.typography.titleMedium)
-                Text("-${formatKrw(transaction.amount)}", style = MaterialTheme.typography.titleLarge)
-                Text(transaction.detail, style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                HorizontalDivider()
+            else -> {
+                state.summary?.let { summary -> item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("이번 달 수입  ${formatKrw(summary.income)}")
+                            Text("이번 달 지출  ${formatKrw(summary.expense)}")
+                            Text("잔액  ${formatKrw(summary.balance)}", style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                } }
+                item { Text("최근 거래", style = MaterialTheme.typography.titleLarge) }
+                if (state.empty) item { Text("이번 달 거래 내역이 없습니다.") }
+                items(state.recentTransactions, key = { it.id }) { transaction ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(transaction.title, style = MaterialTheme.typography.titleMedium)
+                        Text("${if (transaction.income) "+" else "-"}${formatKrw(transaction.amount)}",
+                            style = MaterialTheme.typography.titleLarge)
+                        HorizontalDivider()
+                    }
+                }
             }
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-private fun HomeLightPreview() { MoneyBookTheme(dynamicColor = false) { HomeScreen(HomeUiState()) } }
-
-@Preview(showBackground = true)
-@Composable
-private fun HomeDarkPreview() { MoneyBookTheme(darkTheme = true, dynamicColor = false) { HomeScreen(HomeUiState()) } }

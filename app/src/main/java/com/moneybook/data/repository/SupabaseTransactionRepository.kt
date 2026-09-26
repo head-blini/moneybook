@@ -6,10 +6,12 @@ import com.moneybook.data.remote.supabase.CardDto
 import com.moneybook.data.remote.supabase.SupabaseProvider
 import com.moneybook.data.remote.supabase.TransactionDto
 import com.moneybook.data.remote.supabase.TransactionInsertDto
+import com.moneybook.data.remote.supabase.MonthlySummaryDto
 import com.moneybook.data.remote.supabase.TransactionRefundDto
 import com.moneybook.data.remote.supabase.TransactionUpdateDto
 import com.moneybook.domain.model.Card
 import com.moneybook.domain.model.RefundStatus
+import com.moneybook.domain.model.MonthlySummary
 import com.moneybook.domain.model.Transaction
 import com.moneybook.domain.model.TransactionDraft
 import com.moneybook.domain.model.TransactionRefund
@@ -39,6 +41,26 @@ class SupabaseTransactionRepository @Inject constructor(
     private val authRepository: AuthRepository,
     private val householdRepository: HouseholdRepository,
 ) : TransactionRepository {
+    override suspend fun getMonthlySummary(month: YearMonth): AppResult<MonthlySummary> = request(
+        "월간 요약을 불러오지 못했습니다. 다시 시도해 주세요.",
+    ) {
+        val dto = provider.client.postgrest.rpc(
+            "get_monthly_summary",
+            buildJsonObject { put("month_start", month.atDay(1).toString()) },
+        ).decodeList<MonthlySummaryDto>().single()
+        MonthlySummary(dto.sharedIncome, dto.sharedExpense, dto.personalIncome, dto.personalExpense)
+    }
+
+    override suspend fun getRefundsForTransactions(ids: List<String>): AppResult<List<TransactionRefund>> = request(
+        "환불 내역을 불러오지 못했습니다. 다시 시도해 주세요.",
+    ) {
+        if (ids.isEmpty()) emptyList() else ids.distinct().chunked(80).flatMap { batch ->
+            provider.client.from("transaction_refunds").select {
+                filter { isIn("transaction_id", batch) }
+            }.decodeList<TransactionRefundDto>().map(TransactionRefundDto::toDomain)
+        }
+    }
+
     override suspend fun getTransactions(month: YearMonth): AppResult<List<Transaction>> = request(
         "거래 내역을 불러오지 못했습니다. 다시 시도해 주세요.",
     ) {
@@ -142,15 +164,7 @@ class SupabaseTransactionRepository @Inject constructor(
         provider.client.from("transaction_refunds").select {
             filter { eq("transaction_id", transactionId) }
             order("refunded_at", Order.DESCENDING)
-        }.decodeList<TransactionRefundDto>().map { dto ->
-            TransactionRefund(
-                dto.id,
-                dto.transactionId,
-                dto.amount,
-                RefundStatus.valueOf(dto.status),
-                Instant.parse(dto.refundedAt),
-            )
-        }
+        }.decodeList<TransactionRefundDto>().map(TransactionRefundDto::toDomain)
     }
 
     override suspend fun createRefund(transactionId: String, amount: Long): AppResult<Unit> = try {
@@ -214,6 +228,10 @@ private fun TransactionDto.toDomain() = Transaction(
     memo = memo,
     transactionAt = Instant.parse(transactionAt),
     status = TransactionStatus.valueOf(status),
+)
+
+private fun TransactionRefundDto.toDomain() = TransactionRefund(
+    id, transactionId, amount, RefundStatus.valueOf(status), Instant.parse(refundedAt),
 )
 
 private fun String?.clean(): String? = this?.trim()?.takeIf(String::isNotEmpty)

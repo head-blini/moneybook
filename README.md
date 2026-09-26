@@ -52,13 +52,19 @@ Household Setup, or Home from the real session and membership query. Owners can
 create a 24-hour, single-use invitation in Settings. Both household members can see
 the household and its membership list.
 
-The bottom navigation and static Home preview from Phase 1 remain intact. Notification
-permission onboarding has been removed because it belongs to a later phase.
+The bottom navigation remains intact. Phase 3A Home reads the visible current-month
+transactions and the existing `get_monthly_summary` RPC, showing income, net expense,
+balance, and up to five recent transactions. Its title uses memo, then category, then
+"거래". Home reloads on return to the tab and app resume. Notification permission
+onboarding belongs to a later phase.
 
 ## Validation
 
 Android and database validation reports are generated under `app/build/reports/`
 and by the Supabase CLI respectively.
+
+Phase 3A rebuild on the home Mac: `./gradlew :app:testDebugUnitTest --console=plain`
+passed. Build, lint, and device checks are reported with the completed Phase 3B work.
 
 Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
 
