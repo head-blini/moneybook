@@ -24,6 +24,7 @@ import com.moneybook.feature.onboarding.HouseholdSetupViewModel
 import com.moneybook.feature.settings.HouseholdSettingsViewModel
 import com.moneybook.feature.settings.SettingsScreen
 import com.moneybook.feature.statistics.StatisticsScreen
+import com.moneybook.feature.statistics.StatisticsViewModel
 import com.moneybook.feature.transaction.AddTransactionScreen
 import com.moneybook.feature.transaction.AddTransactionViewModel
 import com.moneybook.feature.transaction.TransactionsScreen
@@ -163,7 +164,13 @@ internal fun MoneyBookMainNavigation(
                     },
                 )
             }
-            composable(Destination.Statistics.name) { StatisticsScreen() }
+            composable(Destination.Statistics.name) {
+                val viewModel: StatisticsViewModel = hiltViewModel()
+                val statisticsState by viewModel.state.collectAsStateWithLifecycle()
+                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
+                LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.invalidate() }
+                StatisticsScreen(statisticsState, viewModel::previousMonth, viewModel::nextMonth, viewModel::refresh)
+            }
             composable(Destination.Settings.name) {
                 val viewModel: HouseholdSettingsViewModel = hiltViewModel()
                 val settingsState by viewModel.state.collectAsStateWithLifecycle()

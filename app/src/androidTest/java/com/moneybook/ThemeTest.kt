@@ -11,6 +11,7 @@ import com.moneybook.app.MainActivity
 import com.moneybook.core.ui.MoneyBookTheme
 import com.moneybook.feature.home.HomeScreen
 import com.moneybook.feature.home.HomeUiState
+import com.moneybook.domain.model.MonthlySummary
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +26,7 @@ class ThemeTest {
                 MoneyBookTheme(darkTheme = dark, dynamicColor = dynamic) {
                     val background = MaterialTheme.colorScheme.background
                     SideEffect { backgroundLuminance = background.luminance() }
-                    HomeScreen(HomeUiState())
+                    HomeScreen(HomeUiState(loading = false, summary = MonthlySummary(0, 2_431_500, 0, 0)))
                 }
             }
         }

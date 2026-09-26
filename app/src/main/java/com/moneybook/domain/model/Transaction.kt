@@ -1,6 +1,8 @@
 package com.moneybook.domain.model
 
 import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneId
 
 enum class TransactionType { EXPENSE, INCOME }
 enum class TransactionScope { SHARED, PERSONAL }
@@ -55,6 +57,12 @@ data class MonthlySummary(
     val income: Long get() = sharedIncome + personalIncome
     val expense: Long get() = sharedExpense + personalExpense
     val balance: Long get() = income - expense
+}
+
+fun seoulMonthBounds(month: YearMonth): Pair<Instant, Instant> {
+    val zone = ZoneId.of("Asia/Seoul")
+    return month.atDay(1).atStartOfDay(zone).toInstant() to
+        month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
 }
 
 data class TransactionDraft(

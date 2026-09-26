@@ -18,6 +18,7 @@ import com.moneybook.domain.model.TransactionRefund
 import com.moneybook.domain.model.TransactionScope
 import com.moneybook.domain.model.TransactionStatus
 import com.moneybook.domain.model.TransactionType
+import com.moneybook.domain.model.seoulMonthBounds
 import com.moneybook.domain.repository.AuthRepository
 import com.moneybook.domain.repository.HouseholdRepository
 import com.moneybook.domain.repository.TransactionRepository
@@ -27,7 +28,6 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.Instant
 import java.time.YearMonth
-import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -64,9 +64,7 @@ class SupabaseTransactionRepository @Inject constructor(
     override suspend fun getTransactions(month: YearMonth): AppResult<List<Transaction>> = request(
         "거래 내역을 불러오지 못했습니다. 다시 시도해 주세요.",
     ) {
-        val zone = ZoneId.of("Asia/Seoul")
-        val start = month.atDay(1).atStartOfDay(zone).toInstant()
-        val end = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
+        val (start, end) = seoulMonthBounds(month)
         provider.client.from("transactions").select {
             filter {
                 gte("transaction_at", start.toString())

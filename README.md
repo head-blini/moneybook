@@ -5,7 +5,8 @@ two-person household. Phase 2B-1 adds the database foundation for categories,
 cards, shared/private transactions, partial refunds, aggregate card performance,
 transaction soft deletion, and automatic household default categories. Android
 transaction entry, monthly history, editing, refund, and soft-delete restore are
-implemented in Phase 2B-2. Notification import remains later work.
+implemented in Phase 2B-2. Phase 3 rebuilds Home and monthly Statistics on that
+foundation. Notification import remains later work.
 
 ## Build and run
 
@@ -58,6 +59,13 @@ balance, and up to five recent transactions. Its title uses memo, then category,
 "거래". Home reloads on return to the tab and app resume. Notification permission
 onboarding belongs to a later phase.
 
+Phase 3B Statistics uses the same monthly summary RPC. Category amounts use only
+visible expense transactions in the selected Seoul month, excluding pending and
+soft-deleted rows and subtracting confirmed refunds from the original transaction
+month. The month buttons stop at the current month; income-only months still show
+the monthly totals. Separate queries can briefly disagree if data changes between
+requests.
+
 ## Validation
 
 Android and database validation reports are generated under `app/build/reports/`
@@ -65,6 +73,13 @@ and by the Supabase CLI respectively.
 
 Phase 3A rebuild on the home Mac: `./gradlew :app:testDebugUnitTest --console=plain`
 passed. Build, lint, and device checks are reported with the completed Phase 3B work.
+
+Phase 3B rebuild on the home Mac: `./gradlew :app:testDebugUnitTest :app:assembleDebug
+:app:lintDebug :app:assembleDebugAndroidTest --console=plain` passed. A final
+`./gradlew :app:testDebugUnitTest --console=plain` run reported 39 tests,
+0 failures, 0 errors, and 0 skipped; lint reported 0 errors and 13 warnings.
+No Android device was connected, so instrumented tests were compiled but not run
+on a device.
 
 Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
 

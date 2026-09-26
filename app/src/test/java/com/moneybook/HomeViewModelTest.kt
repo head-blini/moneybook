@@ -8,11 +8,15 @@ import com.moneybook.feature.home.HomeViewModel
 import com.moneybook.feature.home.formatKrw
 import java.time.Instant
 import java.time.YearMonth
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -80,6 +84,21 @@ class HomeViewModelTest {
         assertEquals("로그인이 필요합니다.", viewModel.uiState.value.error)
     }
 
+    @Test fun olderResponseCannotReplaceRefreshedHome() = runTest(dispatcher) {
+        val repository = HomeRepository()
+        repository.delayNextSummary = true
+        val viewModel = HomeViewModel(repository, HomeCategories())
+        viewModel.refresh()
+        runCurrent()
+        repository.rows = listOf(homeTransaction("new", Instant.now(), null, "food"))
+        viewModel.refresh()
+        advanceUntilIdle()
+        repository.releaseDelayed(MonthlySummary(0, 999, 0, 0))
+        advanceUntilIdle()
+        assertEquals("new", viewModel.uiState.value.recentTransactions.single().id)
+        assertEquals(0L, viewModel.uiState.value.summary?.expense)
+    }
+
     @Test fun wonFormattingPreservesIntegerPrecision() {
         assertEquals("₩54,900", formatKrw(54_900L))
         assertEquals("₩9,223,372,036,854,775,807", formatKrw(Long.MAX_VALUE))
@@ -103,10 +122,17 @@ internal class HomeRepository : TransactionRepository {
     var summary = MonthlySummary(0, 0, 0, 0)
     var rows: List<Transaction> = emptyList()
     var refunds: List<TransactionRefund> = emptyList()
+    var delayNextSummary = false
+    private var delayed: Continuation<AppResult<MonthlySummary>>? = null
     override suspend fun getMonthlySummary(month: YearMonth): AppResult<MonthlySummary> {
         summaryCalls++
+        if (delayNextSummary) {
+            delayNextSummary = false
+            return suspendCoroutine { delayed = it }
+        }
         return if (failure) AppResult.Error("summary failed") else AppResult.Success(summary)
     }
+    fun releaseDelayed(value: MonthlySummary) { delayed?.resume(AppResult.Success(value)) }
     override suspend fun getTransactions(month: YearMonth) = AppResult.Success(rows)
     override suspend fun getRefundsForTransactions(ids: List<String>) = AppResult.Success(refunds.filter { it.transactionId in ids })
     override suspend fun getCards() = AppResult.Success(emptyList<Card>())
