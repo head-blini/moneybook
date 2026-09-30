@@ -55,9 +55,15 @@ the household and its membership list.
 
 The bottom navigation remains intact. Phase 3A Home reads the visible current-month
 transactions and the existing `get_monthly_summary` RPC, showing income, net expense,
-balance, and up to five recent transactions. Its title uses memo, then category, then
-"거래". Home reloads on return to the tab and app resume. Notification permission
+balance, and up to five recent transactions. Recent transaction titles use merchant,
+then memo, then category, then "거래". The category appears below the title unless
+it would repeat the same text. Home reloads on return to the tab and app resume. Notification permission
 onboarding belongs to a later phase.
+
+Transaction history and recent Home transactions display expense amounts net of
+confirmed refunds, with the original amount and refunded total underneath. Full
+refunds show zero net expense. Pending/canceled refunds do not reduce the amount;
+the stored original amount remains unchanged for editing and refund validation.
 
 Phase 3B Statistics uses the same monthly summary RPC. Category amounts use only
 visible expense transactions in the selected Seoul month, excluding pending and
@@ -80,6 +86,33 @@ Phase 3B rebuild on the home Mac: `./gradlew :app:testDebugUnitTest :app:assembl
 0 failures, 0 errors, and 0 skipped; lint reported 0 errors and 13 warnings.
 No Android device was connected, so instrumented tests were compiled but not run
 on a device.
+
+Phase 3 validation on Windows on 2026-09-30:
+
+* JVM unit tests: 39/39 passed.
+* Debug app and instrumented-test APK builds passed.
+* Lint: 0 errors and 11 warnings.
+* Connected UI tests on Samsung SM-G986N / Android 13: 9/9 passed after updating
+  the theme test assertion to match the current Home expense label.
+* The app was reinstalled with the local Supabase configuration and reached Login.
+
+These UI tests use test fixtures. Windows validation used JDK 21, SDK Platform
+36, and Build Tools 35.0.0. ASCII directory junctions for the project and Gradle user
+home avoided a test-worker startup failure under the Korean Windows user path.
+
+Follow-up device validation on 2026-09-30 reproduced an Android 13 timestamp parsing
+failure for Postgres offsets such as `+00:00`. Transaction and refund mapping now use
+`OffsetDateTime.parse(...).toInstant()` instead of `Instant.parse(...)`. Two device
+regression tests failed before the fix and passed afterward; all 11 instrumented
+tests and 39 JVM tests passed. Build and lint passed. The updated app retained its
+login, and authenticated Home, transaction history, and monthly category statistics
+loaded existing Supabase data successfully. No transaction data was modified during
+this read-only verification; create/edit/refund/delete acceptance checks remain pending.
+
+Final merchant/refund display validation on 2026-09-30 passed 40/40 JVM tests,
+11/11 device tests, Debug builds, and lint (0 errors). Existing partially refunded
+transactions showed the same net amount in Home and history, with original/refund
+amounts displayed separately.
 
 Phase 2A was validated on 2026-09-21 with a Samsung SM-G986N running Android 13:
 

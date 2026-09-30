@@ -132,17 +132,24 @@ private fun TransactionCard(transaction: Transaction, category: String, onClick:
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    (if (transaction.type == TransactionType.INCOME) "+" else "−") + formatKrw(transaction.amount),
+                    (if (transaction.type == TransactionType.INCOME) "+" else "−") + formatKrw(transaction.netAmount),
                     color = amountColor,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    transactionStatusLabel(transaction.status),
+                    if (transaction.confirmedRefundAmount > 0 && transaction.netAmount > 0) "부분 환불"
+                        else transactionStatusLabel(transaction.status),
                     color = if (transaction.status == TransactionStatus.CANCELED) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
+        }
+        if (transaction.confirmedRefundAmount > 0) {
+            Text("원금 ${formatKrw(transaction.amount)} · 환불 ${formatKrw(transaction.confirmedRefundAmount)}",
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

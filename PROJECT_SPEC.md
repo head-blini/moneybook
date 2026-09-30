@@ -1,6 +1,6 @@
 # MoneyBook --- Project Specification
 
-Last updated: 2026-09-21
+Last updated: 2026-09-30
 
 이 문서는 MoneyBook 가계부 앱 프로젝트의 현재 기준 사양(Source of Truth)이다.
 새로운 기능이나 구조 변경을 논의할 때 실제 구현과 이 문서의 충돌 여부를 먼저
@@ -108,7 +108,8 @@ Compose UI → ViewModel(StateFlow) → Domain Repository interface
   Household Setup, Home 중 하나로 이동한다.
 * 로그인 이후 하단 내비게이션은 Home, Transactions, Add Transaction, Statistics,
   Settings로 구성된다.
-* Statistics 화면은 현재 placeholder이며, Home의 금액 데이터는 정적 preview 상태다.
+* Home은 실제 월간 수입·순지출·잔액과 최근 거래 5개를 표시한다.
+* Statistics는 월 이동, 월간 합계 및 카테고리별 순지출·비율을 지원한다.
 
 ---
 
@@ -243,6 +244,21 @@ merchant, memo, transactionAt, status
   선택지로 표시한다.
 * 수입 거래는 `card_id = null`로 저장한다.
 * 카드/카테고리 자체의 관리 화면은 현재 구현되어 있지 않다.
+
+### 홈·통계 및 환불 금액 표시 (Phase 3)
+
+* Home과 Statistics는 `get_monthly_summary` RPC를 사용한다.
+* 최근 거래 제목은 상호명 → 메모 → 카테고리 → `거래` 순으로 선택한다.
+  카테고리는 제목 아래에 표시하되 같은 문구는 반복하지 않는다.
+* 거래 내역과 최근 거래의 지출 금액은 확정 환불을 차감한 순금액이다.
+  환불이 있으면 원래 금액과 환불액을 함께 표시하며, 전액 환불은 0원이다.
+* 원래 `Transaction.amount`는 유지하고 `confirmedRefundAmount`, `netAmount`로
+  조회용 환불 합계와 순금액을 구분한다. DB 스키마 변경은 없다.
+* 통계는 서울 기준 거래 월에 확정 환불을 반영하며 처리 중 거래는 집계에서 제외한다.
+* Android의 서버 날짜 변환은 `OffsetDateTime.parse(...).toInstant()`를 사용한다.
+* 2026-09-30 Windows 검증: 단위 테스트 40/40, Android 13 SM-G986N 기기 테스트
+  11/11, Debug 빌드 및 Lint 통과. 실제 서버의 홈·거래·통계 조회와 부분 환불
+  순금액 표시를 확인했다. 전체 생성·수정·삭제·복구 시나리오 재검증은 별도다.
 
 ---
 
@@ -438,8 +454,6 @@ Samsung SM-G986N / Android 13에서 다음을 완료했다.
 
 * Android 결제 알림 listener, provider parser, 중복 방지 및 자동 거래 등록
 * merchant rule 기반 자동 분류와 사용자 수정 학습 흐름
-* Statistics 화면과 `get_monthly_summary` RPC의 실제 Android 연동
-* Home 화면의 실제 거래/집계 데이터 연동
 * 카드 생성·수정·비활성화 관리 UI
 * 카드 실적 화면과 `get_card_performance` RPC의 실제 Android 연동
 * Realtime 구독 사용 여부와 필요한 사용자 시나리오

@@ -38,7 +38,11 @@ data class Transaction(
     val memo: String?,
     val transactionAt: Instant,
     val status: TransactionStatus,
-)
+    val confirmedRefundAmount: Long = 0L,
+) {
+    val netAmount: Long
+        get() = if (type == TransactionType.EXPENSE) (amount - confirmedRefundAmount).coerceAtLeast(0L) else amount
+}
 
 data class TransactionRefund(
     val id: String,

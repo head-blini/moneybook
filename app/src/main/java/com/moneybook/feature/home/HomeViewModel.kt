@@ -19,7 +19,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class RecentTransaction(val id: String, val title: String, val amount: Long, val income: Boolean)
+data class RecentTransaction(
+    val id: String,
+    val title: String,
+    val amount: Long,
+    val income: Boolean,
+    val categoryName: String? = null,
+    val originalAmount: Long = amount,
+)
 
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(SEOUL),
@@ -34,12 +41,17 @@ internal fun recentTransactions(transactions: List<Transaction>, categories: Lis
     val names = categories.associate { it.id to it.name }
     return transactions.sortedWith(compareByDescending<Transaction> { it.transactionAt }.thenBy { it.id })
         .take(5).map { transaction ->
+            val categoryName = names[transaction.categoryId]?.trim()?.takeIf(String::isNotEmpty)
+            val title = transaction.merchant?.trim()?.takeIf(String::isNotEmpty)
+                ?: transaction.memo?.trim()?.takeIf(String::isNotEmpty)
+                ?: categoryName ?: "거래"
             RecentTransaction(
                 transaction.id,
-                transaction.memo?.trim()?.takeIf(String::isNotEmpty)
-                    ?: names[transaction.categoryId]?.trim()?.takeIf(String::isNotEmpty) ?: "거래",
-                transaction.amount,
+                title,
+                transaction.netAmount,
                 transaction.type == TransactionType.INCOME,
+                categoryName?.takeUnless { it == title },
+                transaction.amount,
             )
         }
 }

@@ -27,6 +27,7 @@ import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.util.UUID
 import javax.inject.Inject
@@ -65,13 +66,14 @@ class SupabaseTransactionRepository @Inject constructor(
         "거래 내역을 불러오지 못했습니다. 다시 시도해 주세요.",
     ) {
         val (start, end) = seoulMonthBounds(month)
-        provider.client.from("transactions").select {
+        val transactions = provider.client.from("transactions").select {
             filter {
                 gte("transaction_at", start.toString())
                 lt("transaction_at", end.toString())
             }
             order("transaction_at", Order.DESCENDING)
         }.decodeList<TransactionDto>().map(TransactionDto::toDomain)
+        attachRefunds(transactions)
     }
 
     override suspend fun getCards(): AppResult<List<Card>> = request(
@@ -131,7 +133,7 @@ class SupabaseTransactionRepository @Inject constructor(
     override suspend fun updateTransaction(id: String, draft: TransactionDraft): AppResult<Transaction> = request(
         "거래를 수정하지 못했습니다. 입력을 확인해 주세요.",
     ) {
-        provider.client.from("transactions").update(
+        val updated = provider.client.from("transactions").update(
             TransactionUpdateDto(
                 type = draft.type.name,
                 amount = draft.amount,
@@ -146,6 +148,7 @@ class SupabaseTransactionRepository @Inject constructor(
             select()
         }.decodeList<TransactionDto>().singleOrNull()?.toDomain()
             ?: error("Updated transaction is not visible")
+        attachRefunds(listOf(updated)).single()
     }
 
     override suspend fun softDeleteTransaction(id: String): AppResult<Unit> = rpcUnit(
@@ -184,6 +187,14 @@ class SupabaseTransactionRepository @Inject constructor(
 
     override fun currentUserId(): String? = authRepository.currentUserId()
 
+    private suspend fun attachRefunds(transactions: List<Transaction>): List<Transaction> {
+        val ids = transactions.filter { it.type == TransactionType.EXPENSE }.map { it.id }
+        return when (val result = getRefundsForTransactions(ids)) {
+            is AppResult.Success -> transactions.withConfirmedRefunds(result.value)
+            is AppResult.Error -> error(result.message)
+        }
+    }
+
     private suspend fun rpcUnit(function: String, message: String, id: String): AppResult<Unit> = try {
         provider.client.postgrest.rpc(function, buildJsonObject { put("transaction_id", id) })
         AppResult.Success(Unit)
@@ -212,7 +223,7 @@ class SupabaseTransactionRepository @Inject constructor(
     }
 }
 
-private fun TransactionDto.toDomain() = Transaction(
+internal fun TransactionDto.toDomain() = Transaction(
     id = id,
     householdId = householdId,
     createdBy = createdBy,
@@ -224,12 +235,21 @@ private fun TransactionDto.toDomain() = Transaction(
     cardId = cardId,
     merchant = merchant,
     memo = memo,
-    transactionAt = Instant.parse(transactionAt),
+    transactionAt = OffsetDateTime.parse(transactionAt).toInstant(),
     status = TransactionStatus.valueOf(status),
 )
 
-private fun TransactionRefundDto.toDomain() = TransactionRefund(
-    id, transactionId, amount, RefundStatus.valueOf(status), Instant.parse(refundedAt),
+internal fun TransactionRefundDto.toDomain() = TransactionRefund(
+    id, transactionId, amount, RefundStatus.valueOf(status), OffsetDateTime.parse(refundedAt).toInstant(),
 )
 
 private fun String?.clean(): String? = this?.trim()?.takeIf(String::isNotEmpty)
+
+internal fun List<Transaction>.withConfirmedRefunds(refunds: List<TransactionRefund>): List<Transaction> {
+    val totals = refunds.filter { it.status == RefundStatus.CONFIRMED }
+        .groupBy { it.transactionId }.mapValues { (_, rows) -> rows.sumOf { it.amount } }
+    return map { transaction ->
+        transaction.copy(confirmedRefundAmount = if (transaction.type == TransactionType.EXPENSE)
+            totals[transaction.id] ?: 0L else 0L)
+    }
+}

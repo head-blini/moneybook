@@ -35,8 +35,10 @@ class HomeViewModelTest {
         repository.summary = MonthlySummary(2000, 300, 1000, 200)
         repository.rows = (0..6).map { index ->
             homeTransaction(index.toString(), Instant.parse("2026-09-${(10 + index).toString().padStart(2, '0')}T00:00:00Z"),
-                when (index) { 6 -> "  메모  "; 5 -> "  "; else -> null },
-                if (index == 4) "unknown" else "food")
+                when (index) { 6, 5 -> "  메모  "; 4 -> "  "; else -> null },
+                if (index == 3) "unknown" else "food").copy(
+                    merchant = when (index) { 6 -> "  스타벅스  "; 5 -> "  "; 2 -> "식비"; else -> null },
+                )
         }.reversed()
         val viewModel = HomeViewModel(repository, HomeCategories())
 
@@ -50,7 +52,8 @@ class HomeViewModelTest {
         assertEquals(2500L, state.summary?.balance)
         assertEquals(5, state.recentTransactions.size)
         assertEquals(listOf("6", "5", "4", "3", "2"), state.recentTransactions.map { it.id })
-        assertEquals(listOf("메모", "식비", "거래"), state.recentTransactions.take(3).map { it.title })
+        assertEquals(listOf("스타벅스", "메모", "식비", "거래", "식비"), state.recentTransactions.map { it.title })
+        assertEquals(listOf("식비", "식비", null, null, null), state.recentTransactions.map { it.categoryName })
     }
 
     @Test fun emptyErrorRetryAndReentryRefresh() = runTest(dispatcher) {

@@ -45,8 +45,17 @@ fun HomeScreen(state: HomeUiState, household: Household? = null, onRetry: () -> 
                 items(state.recentTransactions, key = { it.id }) { transaction ->
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(transaction.title, style = MaterialTheme.typography.titleMedium)
+                        transaction.categoryName?.let { category ->
+                            Text(category, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Text("${if (transaction.income) "+" else "-"}${formatKrw(transaction.amount)}",
                             style = MaterialTheme.typography.titleLarge)
+                        if (transaction.originalAmount > transaction.amount) {
+                            Text("원금 ${formatKrw(transaction.originalAmount)} · 환불 ${formatKrw(transaction.originalAmount - transaction.amount)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         HorizontalDivider()
                     }
                 }

@@ -30,7 +30,7 @@ class ThemeTest {
                 }
             }
         }
-        compose.onNodeWithText("₩2,431,500").assertIsDisplayed()
+        compose.onNodeWithText("이번 달 지출  ₩2,431,500").assertIsDisplayed()
         compose.runOnIdle {
             assertTrue(if (dark) backgroundLuminance < 0.5f else backgroundLuminance > 0.5f)
         }
