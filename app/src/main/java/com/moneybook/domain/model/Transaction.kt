@@ -1,6 +1,8 @@
 package com.moneybook.domain.model
 
 import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneId
 
 enum class TransactionType { EXPENSE, INCOME }
 enum class TransactionScope { SHARED, PERSONAL }
@@ -36,7 +38,11 @@ data class Transaction(
     val memo: String?,
     val transactionAt: Instant,
     val status: TransactionStatus,
-)
+    val confirmedRefundAmount: Long = 0L,
+) {
+    val netAmount: Long
+        get() = if (type == TransactionType.EXPENSE) (amount - confirmedRefundAmount).coerceAtLeast(0L) else amount
+}
 
 data class TransactionRefund(
     val id: String,
@@ -45,6 +51,23 @@ data class TransactionRefund(
     val status: RefundStatus,
     val refundedAt: Instant,
 )
+
+data class MonthlySummary(
+    val sharedIncome: Long,
+    val sharedExpense: Long,
+    val personalIncome: Long,
+    val personalExpense: Long,
+) {
+    val income: Long get() = sharedIncome + personalIncome
+    val expense: Long get() = sharedExpense + personalExpense
+    val balance: Long get() = income - expense
+}
+
+fun seoulMonthBounds(month: YearMonth): Pair<Instant, Instant> {
+    val zone = ZoneId.of("Asia/Seoul")
+    return month.atDay(1).atStartOfDay(zone).toInstant() to
+        month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
+}
 
 data class TransactionDraft(
     val type: TransactionType,

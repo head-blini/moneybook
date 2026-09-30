@@ -15,9 +15,13 @@ import kotlinx.coroutines.CancellationException
 class SupabaseCategoryRepository @Inject constructor(
     private val provider: SupabaseProvider,
 ) : CategoryRepository {
-    override suspend fun getActiveCategories(): AppResult<List<Category>> = try {
+    override suspend fun getActiveCategories(): AppResult<List<Category>> = loadCategories(true)
+
+    override suspend fun getCategories(): AppResult<List<Category>> = loadCategories(false)
+
+    private suspend fun loadCategories(activeOnly: Boolean): AppResult<List<Category>> = try {
         val categories = provider.client.from("categories").select {
-            filter { eq("is_active", true) }
+            if (activeOnly) filter { eq("is_active", true) }
             order("name", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
         }.decodeList<CategoryDto>().map { dto ->
             Category(dto.id, dto.name, TransactionType.valueOf(dto.transactionType), dto.isActive)

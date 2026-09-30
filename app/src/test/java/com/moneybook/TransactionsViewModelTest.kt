@@ -116,6 +116,9 @@ class TransactionsViewModelTest {
         advanceUntilIdle()
         assertEquals(TransactionStatus.CONFIRMED, viewModel.state.value.selected?.status)
 
+        assertEquals(7_000L, viewModel.state.value.transactions.single().netAmount)
+        assertEquals(10_000L, viewModel.state.value.transactions.single().amount)
+
         viewModel.setRefundAmount("7000")
         viewModel.createRefund()
         advanceUntilIdle()
@@ -125,6 +128,7 @@ class TransactionsViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
         assertEquals(TransactionStatus.CANCELED, viewModel.state.value.transactions.single().status)
+        assertEquals(0L, viewModel.state.value.transactions.single().netAmount)
     }
 
     @Test fun oneFullRefundCancelsTransaction() = runTest(dispatcher) {
@@ -179,6 +183,7 @@ private class FakeCategoryRepository : CategoryRepository {
     override suspend fun getActiveCategories() = AppResult.Success(
         listOf(Category("food", "식비", TransactionType.EXPENSE, true)),
     )
+    override suspend fun getCategories() = getActiveCategories()
 }
 
 private class FakeTransactionRepository(
@@ -186,13 +191,19 @@ private class FakeTransactionRepository(
     private val failLoads: Boolean = false,
     private val failUpdates: Boolean = false,
 ) : TransactionRepository {
+    override suspend fun getMonthlySummary(month: YearMonth) = AppResult.Success(MonthlySummary(0, 0, 0, 0))
+    override suspend fun getRefundsForTransactions(ids: List<String>) = AppResult.Success(refunds.filter { it.transactionId in ids })
     val refunds = mutableListOf<TransactionRefund>()
     var updateCalls = 0
         private set
     private val deleted = mutableMapOf<String, Transaction>()
 
     override suspend fun getTransactions(month: YearMonth): AppResult<List<Transaction>> =
-        if (failLoads) AppResult.Error("load failed") else AppResult.Success(transactions.toList())
+        if (failLoads) AppResult.Error("load failed") else AppResult.Success(transactions.map { transaction ->
+            transaction.copy(confirmedRefundAmount = refunds.filter {
+                it.transactionId == transaction.id && it.status == RefundStatus.CONFIRMED
+            }.sumOf { it.amount })
+        })
     override suspend fun getCards() = AppResult.Success(emptyList<Card>())
     override suspend fun createTransaction(draft: TransactionDraft) = error("Not used")
     override suspend fun updateTransaction(id: String, draft: TransactionDraft): AppResult<Transaction> {

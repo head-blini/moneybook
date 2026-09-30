@@ -38,6 +38,8 @@ class AppViewModel @Inject constructor(
     private val mutableState = MutableStateFlow<AppUiState>(AppUiState.Loading)
     val state: StateFlow<AppUiState> = mutableState.asStateFlow()
 
+    fun currentUserId(): String? = authRepository.currentUserId()
+
     init { refresh() }
 
     fun refresh() {

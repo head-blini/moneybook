@@ -5,4 +5,5 @@ import com.moneybook.domain.model.Category
 
 interface CategoryRepository {
     suspend fun getActiveCategories(): AppResult<List<Category>>
+    suspend fun getCategories(): AppResult<List<Category>>
 }
